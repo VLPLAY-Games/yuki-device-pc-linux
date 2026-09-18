@@ -1,0 +1,5 @@
+#!/bin/sh
+# Installed to ~/.local/bin/yuki-device-pc-linux (see README) - runs the app from its repo checkout.
+# REPO_DIR is filled in by the README's install step.
+REPO_DIR="__YUKI_DEVICE_PC_LINUX_REPO__"
+cd "$REPO_DIR" && exec python3 -m yuki_device_pc_linux.main "$@"

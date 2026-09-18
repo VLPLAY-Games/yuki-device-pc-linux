@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Yuki PC (Linux)
+Comment=Remote control client for the Yuki ecosystem
+Exec=yuki-device-pc-linux
+Icon=network-workgroup
+Terminal=false
+Categories=Utility;Network;
+StartupWMClass=games.vlplay.YukiDevicePCLinux

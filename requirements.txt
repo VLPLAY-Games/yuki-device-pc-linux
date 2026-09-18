@@ -1,0 +1,5 @@
+# PyGObject (GTK4 + libadwaita bindings) is expected to come from your distro's system
+# packages (python3-gi, gir1.2-gtk-4.0, gir1.2-adw-1) - see README for exact package names.
+# Only the pure-Python dependencies are pip-installable:
+websockets==16.0
+psutil==7.2.2
