@@ -20,7 +20,8 @@ from yuki_protocol import (
     device_response_message,
 )
 
-HANDSHAKE_TIMEOUT = 10
+WS_CONNECT_TIMEOUT = 10
+WELCOME_TIMEOUT = 65  # yuki-core can hold a new device pending admin approval for up to AUTH_TIMEOUT=60s before sending welcome
 RECONNECT_BACKOFF_BASE = 3
 RECONNECT_BACKOFF_MAX = 60
 METRICS_INTERVAL = 60
@@ -114,7 +115,7 @@ class YukiClient:
         self._log("INFO", f"Connecting to {self._server_address}...")
         uri = self._server_address.rstrip("/") + "/device"
         try:
-            self._ws = await websockets.connect(uri, open_timeout=HANDSHAKE_TIMEOUT)
+            self._ws = await websockets.connect(uri, open_timeout=WS_CONNECT_TIMEOUT)
         except Exception as e:
             self._log("ERROR", f"Connection failed: {e}")
             self._set_status(ConnectionStatus.DISCONNECTED)
@@ -128,7 +129,7 @@ class YukiClient:
 
     async def _handshake_timeout_watch(self):
         try:
-            await asyncio.sleep(HANDSHAKE_TIMEOUT)
+            await asyncio.sleep(WELCOME_TIMEOUT)
             if self.status == ConnectionStatus.HANDSHAKING:
                 self._log("WARN", "Handshake timeout, forcing disconnect")
                 await self.force_disconnect()
@@ -193,7 +194,7 @@ class YukiClient:
     async def _try_reconnect(self) -> bool:
         uri = self._server_address.rstrip("/") + "/device"
         try:
-            self._ws = await websockets.connect(uri, open_timeout=HANDSHAKE_TIMEOUT)
+            self._ws = await websockets.connect(uri, open_timeout=WS_CONNECT_TIMEOUT)
         except Exception as e:
             self._log("ERROR", f"Reconnection error: {e}")
             return False
