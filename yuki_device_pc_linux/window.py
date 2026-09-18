@@ -247,11 +247,25 @@ class YukiWindow(Adw.ApplicationWindow):
             self.client.enabled_capabilities.discard(capability)
         self._save_settings()
 
+    def _run_async(self, coro):
+        future = self.bridge.run_coroutine(coro)
+
+        def _on_done(f):
+            try:
+                f.result()
+            except Exception as e:
+                GLib.idle_add(self._append_log, "ERROR", f"Background task failed: {e}")
+
+        future.add_done_callback(_on_done)
+        return future
+
     def _on_connect_clicked(self, _button):
-        if self.client.status in (ConnectionStatus.DISCONNECTED,):
-            self.bridge.run_coroutine(self.client.connect(self.address_row.get_text()))
+        # Always actionable, even mid-Connecting/Handshaking/Reconnecting, so a stuck attempt can
+        # always be aborted from the UI instead of leaving the user with no way to cancel it.
+        if self.client.status == ConnectionStatus.DISCONNECTED:
+            self._run_async(self.client.connect(self.address_row.get_text()))
         else:
-            self.bridge.run_coroutine(self.client.disconnect(user_initiated=True))
+            self._run_async(self.client.disconnect(user_initiated=True))
 
     def _on_open_panel_clicked(self, _button):
         address = self.address_row.get_text()
@@ -263,7 +277,7 @@ class YukiWindow(Adw.ApplicationWindow):
         substatus = item.get_string() if item else "idle"
         self.settings["substatus"] = substatus
         self._save_settings()
-        self.bridge.run_coroutine(self.client.set_extended_status(substatus))
+        self._run_async(self.client.set_extended_status(substatus))
 
     def _on_send_to_device_clicked(self, _button):
         target = self.target_device_row.get_text().strip()
@@ -280,7 +294,7 @@ class YukiWindow(Adw.ApplicationWindow):
             self._show_toast(f"Invalid JSON payload: {e}")
             return
 
-        self.bridge.run_coroutine(self.client.send_to_device(target, command, payload))
+        self._run_async(self.client.send_to_device(target, command, payload))
 
     def _on_logs_toggled(self, button):
         self.log_revealer.set_reveal_child(button.get_active())
@@ -319,9 +333,15 @@ class YukiWindow(Adw.ApplicationWindow):
         self.status_label.add_css_class(css_class)
         self.window_title.set_subtitle(text)
 
-        connecting = status in (ConnectionStatus.CONNECTING, ConnectionStatus.HANDSHAKING)
-        self.connect_button.set_sensitive(not connecting)
-        self.connect_button.set_label("Disconnect" if status != ConnectionStatus.DISCONNECTED else "Connect")
+        # Always sensitive - a stuck Connecting/Handshaking/Reconnecting attempt must stay
+        # cancellable from the UI, not just a Connected session.
+        self.connect_button.set_sensitive(True)
+        if status == ConnectionStatus.DISCONNECTED:
+            self.connect_button.set_label("Connect")
+        elif status == ConnectionStatus.CONNECTED:
+            self.connect_button.set_label("Disconnect")
+        else:
+            self.connect_button.set_label("Cancel")
         self.open_panel_button.set_sensitive(status == ConnectionStatus.CONNECTED)
         return False
 

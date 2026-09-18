@@ -93,7 +93,10 @@ class YukiClient:
         for t in tasks:
             try:
                 await t
-            except Exception:
+            except (Exception, asyncio.CancelledError):
+                # CancelledError is a BaseException (not Exception) since Python 3.8 - awaiting
+                # a task we just cancelled always raises it here, so it must be caught explicitly
+                # or disconnect()/force_disconnect() silently fail with no error surfaced anywhere.
                 pass
         self._tasks.clear()
 
