@@ -21,22 +21,29 @@ reimplementing the wire format a fourth time.
 ## Running
 
 ```bash
-git clone <this repo, alongside the rest of the Yuki ecosystem so ../yuki-protocol style paths resolve>
+git clone --recurse-submodules https://github.com/VLPLAY-Games/yuki-device-pc-linux
 cd yuki-device-pc-linux
 python3 -m venv --system-site-packages .venv   # --system-site-packages so it can see GTK4/libadwaita
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m yuki_device_pc_linux.main
 ```
 
-The `libs/yuki-protocol/python/` folder is a vendored copy of
-[`yuki-protocol`](../yuki-protocol)'s Python implementation (same pattern `yuki-core` and
-`yuki-webui` use) - it does not need the sibling `yuki-protocol` repo checked out to run.
+If you already cloned without `--recurse-submodules`, fetch the protocol submodule separately:
+
+```bash
+git submodule update --init
+```
+
+`libs/yuki-protocol` is a git submodule pointing at
+[VLPLAY-Games/yuki-protocol](https://github.com/VLPLAY-Games/yuki-protocol) (same pattern
+`yuki-core`, `yuki-webui` and `yuki-device-pc` use) - it does not need the sibling `yuki-protocol`
+checkout from this repo's parent folder to run, since the submodule brings its own copy.
 
 ## Configuration
 
 Everything is set from the app's UI (Server Connection / Extended Status / Send to Device /
 Capabilities sections) and persisted to `~/.config/yuki-device-pc-linux/settings.json` (mode 600):
-server address, device id, auth token, enabled capabilities (all 14 on by default except
+server address, device id, auth token, enabled capabilities (all 15 on by default except
 `shutdown`/`restart`/`sleep`), substatus, and window size. Logs go to
 `~/.local/share/yuki-device-pc-linux/logs/`, one file per run.
 
@@ -45,7 +52,7 @@ enabled - it works with no other configuration.
 
 ## Commands
 
-Same 14 capabilities as the Windows client, mapped to Linux equivalents: `xdg-open` for
+Same 15 capabilities as the Windows client, mapped to Linux equivalents: `xdg-open` for
 browser/URL/folder commands, `systemctl poweroff/reboot/suspend` for shutdown/restart/sleep,
 `loginctl lock-session` (falling back to `xdg-screensaver lock`) for lock, `pactl` for volume, and
 the first available GUI text editor/calculator on the system for `open_notepad`/`open_calculator`.
@@ -86,4 +93,15 @@ the bindings instead of the one that's actually wired to your installed GTK4/lib
 
 ## Protocol
 
-Speaks Yuki Protocol `yuki/1.0` - see [`yuki-protocol`](../yuki-protocol).
+Speaks Yuki Protocol `yuki/1.0` - see [`yuki-protocol`](../yuki-protocol). Authenticates with the
+legacy handshake (auth token sent directly in `hello`) - `yuki-core` also supports a
+challenge-response handshake that never puts the token on the wire (`hello{nonce_c}` →
+`challenge{nonce_s}` → `auth{hmac}`), which this client doesn't use yet but is fully forward
+compatible with, since `yuki-core` falls back to the legacy method whenever `hello` has no
+`nonce_c`. Use `wss://` in the address field if `yuki-core` has TLS enabled - either way, connect
+over an untrusted network only with TLS on, since the legacy handshake still exposes the token.
+
+## License
+
+GNU General Public License v3.0 (GPLv3), same as the rest of the Yuki ecosystem - see
+[yuki-system](https://github.com/VLPLAY-Games/yuki-system) for details.
